@@ -1,0 +1,162 @@
+-- FLN HUB | DUELS V44: HITBOX & FIXED SPEED
+local player = game.Players.LocalPlayer
+local runService = game:GetService("RunService")
+local coreGui = game:GetService("CoreGui")
+
+if coreGui:FindFirstChild("FLN_V44_HITBOX") then coreGui.FLN_V44_HITBOX:Destroy() end
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "FLN_V44_HITBOX"
+ScreenGui.Parent = coreGui
+
+-- RGB
+local function GetRGB() return Color3.fromHSV(tick() % 5 / 5, 1, 1) end
+
+-- GUI
+local Main = Instance.new("Frame")
+Main.Parent = ScreenGui
+Main.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
+Main.Size = UDim2.new(0, 220, 0, 520)
+Main.Position = UDim2.new(0.5, -110, 0.4, -200)
+Main.Active = true
+Main.Draggable = true
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 12)
+local MStroke = Instance.new("UIStroke", Main)
+MStroke.Thickness = 2
+
+local Title = Instance.new("TextLabel")
+Title.Parent = Main
+Title.Size = UDim2.new(1, 0, 0, 50)
+Title.BackgroundTransparency = 1
+Title.Text = "FLN HUB | DUELS"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 17
+
+local ToggleBtn = Instance.new("TextButton")
+ToggleBtn.Parent = ScreenGui
+ToggleBtn.Size = UDim2.new(0, 45, 0, 45)
+ToggleBtn.Position = UDim2.new(0, 15, 0.5, -22)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+ToggleBtn.Text = "FLN"
+ToggleBtn.Draggable = true
+Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(1, 0)
+local TStroke = Instance.new("UIStroke", ToggleBtn)
+TStroke.Thickness = 2
+ToggleBtn.MouseButton1Click:Connect(function() Main.Visible = not Main.Visible end)
+
+local flags = {AutoBat = false, ESP = false, Speed = false, Hitbox = false, HighJump = false, AntiRagdoll = false, AntiKickback = false}
+
+local function CreateToggle(name, text, pos)
+    local btn = Instance.new("TextButton")
+    btn.Parent = Main
+    btn.Text = text
+    btn.Size = UDim2.new(0.85, 0, 0, 35)
+    btn.Position = pos
+    btn.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+    btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    btn.Font = Enum.Font.GothamBold
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+    btn.MouseButton1Click:Connect(function()
+        flags[name] = not flags[name]
+        btn.TextColor3 = flags[name] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(200, 200, 200)
+    end)
+end
+
+local SpeedIn = Instance.new("TextBox")
+SpeedIn.Parent = Main
+SpeedIn.PlaceholderText = "Speed (1-50)"
+SpeedIn.Text = "30"
+SpeedIn.Size = UDim2.new(0.85, 0, 0, 35)
+SpeedIn.Position = UDim2.new(0.075, 0, 0.12, 0)
+SpeedIn.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+SpeedIn.TextColor3 = Color3.fromRGB(255, 255, 255)
+Instance.new("UICorner", SpeedIn)
+
+CreateToggle("AutoBat", "AUTO BAT", UDim2.new(0.075, 0, 0.20, 0))
+CreateToggle("Speed", "SPEED BOOST", UDim2.new(0.075, 0, 0.28, 0))
+CreateToggle("Hitbox", "HITBOX EXPANDER", UDim2.new(0.075, 0, 0.36, 0))
+CreateToggle("ESP", "PLAYER ESP", UDim2.new(0.075, 0, 0.44, 0))
+CreateToggle("HighJump", "HIGH JUMP (80)", UDim2.new(0.075, 0, 0.52, 0))
+CreateToggle("AntiRagdoll", "ANTI RAGDOLL", UDim2.new(0.075, 0, 0.60, 0))
+
+-- ESP Logic
+local function CreateESP(p)
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "FLN_ESP"
+    highlight.FillTransparency = 0.5
+    highlight.FillColor = Color3.fromRGB(255, 0, 0)
+    runService.RenderStepped:Connect(function()
+        if p.Character and flags.ESP then
+            highlight.Parent = p.Character
+            highlight.Enabled = true
+        else
+            highlight.Enabled = false
+        end
+    end)
+end
+
+for _, p in pairs(game.Players:GetPlayers()) do if p ~= player then CreateESP(p) end end
+game.Players.PlayerAdded:Connect(CreateESP)
+
+--- CORE LOGIC ---
+runService.RenderStepped:Connect(function()
+    local rgb = GetRGB()
+    MStroke.Color = rgb
+    TStroke.Color = rgb
+    ToggleBtn.TextColor3 = rgb
+
+    local char = player.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+
+    if char and root and hum then
+        -- 1 extra life
+        hum:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+        if hum.Health > 0 and hum.Health < 100 then hum.Health = 100 end
+
+        -- Speed Boost Fix (שיטה עוקפת Anti-Cheat)
+        if flags.Speed then
+            local s = tonumber(SpeedIn.Text) or 30
+            if hum.MoveDirection.Magnitude > 0 then
+                root.CFrame = root.CFrame + (hum.MoveDirection * (s/10))
+            end
+        end
+
+        -- Hitbox Expander
+        if flags.Hitbox then
+            for _, p in pairs(game.Players:GetPlayers()) do
+                if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                    local hrp = p.Character.HumanoidRootPart
+                    hrp.Size = Vector3.new(15, 15, 15) -- גודל היטבוקס ענק
+                    hrp.Transparency = 0.7
+                    hrp.CanCollide = false
+                end
+            end
+        else
+            for _, p in pairs(game.Players:GetPlayers()) do
+                if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                    p.Character.HumanoidRootPart.Size = Vector3.new(2, 2, 1)
+                    p.Character.HumanoidRootPart.Transparency = 1
+                end
+            end
+        end
+
+        -- Anti Ragdoll
+        if flags.AntiRagdoll then
+            hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+            hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+        end
+
+        -- High Jump 80
+        if hum.Jump and hum.FloorMaterial ~= Enum.Material.Air then
+            root.Velocity = Vector3.new(root.Velocity.X, 80, root.Velocity.Z)
+        end
+
+        -- Auto Bat
+        if flags.AutoBat then
+            local tool = char:FindFirstChildOfClass("Tool")
+            if tool then tool:Activate() end
+        end
+    end
+end)
